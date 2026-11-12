@@ -1,0 +1,270 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prism Banner</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #111;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+}
+
+/* Área de visualização */
+
+.scene {
+    width: 600px;
+    height: 350px;
+
+    perspective: 1400px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Objeto 3D */
+
+.prism {
+    position: relative;
+
+    width: 500px;
+    height: 280px;
+
+    transform-style: preserve-3d;
+    transform: rotateY(0deg);
+
+    transition: transform 2.5s ease-in-out;
+}
+
+/* Faces laterais */
+
+.face {
+    position: absolute;
+
+    width: 500px;
+    height: 280px;
+
+    top: 0;
+    left: 0;
+
+    overflow: hidden;
+    backface-visibility: hidden;
+
+    background: #222;
+}
+
+.face img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+/* Geometria do prisma triangular */
+
+.face-a {
+    transform: rotateY(0deg) translateZ(144.34px);
+}
+
+.face-b {
+    transform: rotateY(120deg) translateZ(144.34px);
+}
+
+.face-c {
+    transform: rotateY(240deg) translateZ(144.34px);
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="scene">
+
+    <div class="prism" id="prism">
+
+        <div class="face face-a">
+            <img id="imageA">
+        </div>
+
+        <div class="face face-b">
+            <img id="imageB">
+        </div>
+
+        <div class="face face-c">
+            <img id="imageC">
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+/* =================================
+   CONFIGURAÇÕES
+================================= */
+
+const ROTATION_DURATION = 8000; // duração da rotação (ms)
+const PAUSE_DURATION = 4000;    // pausa entre rotações (ms)
+
+/* =================================
+   LISTA DE IMAGENS
+================================= */
+
+const images = [
+    "https://cdn.discordapp.com/attachments/1533899724896206949/1570461458133815356/banner.gif?ex=6af72db5&is=6af5dc35&hm=5e72adc72d7bffa0ac7e91c8238952e2f9fb2e06e69cc4691bab8ec919e56098&",
+    "https://cdn.discordapp.com/attachments/1533568843216060436/1537668543036923964/do-it-for-her-mori_luka.png?ex=6af730ad&is=6af5df2d&hm=6e18c149ab083609b67e5dd29f7da1b576ed57c6efb07d95b8987817708ebf63&",
+    "https://cdn.discordapp.com/attachments/1533568843216060436/1537664476445409371/the_end_of_nautilus.png?ex=6af72ce3&is=6af5db63&hm=92341db374bb18e09cf6070896186bd5f4176e940479057414f6b3b0c340b7d6&",
+    "https://cdn.discordapp.com/attachments/1533568843216060436/1537660796329402428/comunidade_e_importante.png?ex=6af72976&is=6af5d7f6&hm=7fa609e56ccb90cb0511b191cbeb681a5e4a4a192deb51d0dbcedca566a089e6&",
+    "https://media.discordapp.net/attachments/1533568843216060436/1537655068382208040/image.png?ex=6af72420&is=6af5d2a0&hm=ae197b91546da9909d549f513d65568fbc72b10537e7c07ba186e87190576a08&=&format=webp&quality=lossless&width=768&height=441",
+    "https://media.discordapp.net/attachments/1533568843216060436/1533569115090980884/4YKAa5I.png?ex=6af6c749&is=6af575c9&hm=dcca5ee7927c7b7d067c5fc9d8a99a4d4902ef80a4bcd9895a686b3b133ab605&=&format=webp&quality=lossless&width=640&height=421",
+
+];
+
+/* =================================
+   REFERÊNCIAS
+================================= */
+
+const prism = document.getElementById("prism");
+
+const faces = [
+    document.getElementById("imageA"),
+    document.getElementById("imageB"),
+    document.getElementById("imageC")
+];
+
+/* =================================
+   ESTADO
+================================= */
+
+// Face atualmente posicionada de frente
+let frontFace = 0;
+
+// Próxima imagem que ainda não foi utilizada
+let nextImage = 3;
+
+// Ângulo atual do prisma
+let rotation = 0;
+
+// Controle do ciclo
+let isRotating = false;
+
+
+/* =================================
+   CARREGAMENTO DAS IMAGENS
+================================= */
+
+function preloadImages() {
+
+    const promises = images.map(src => {
+
+        return new Promise(resolve => {
+
+            const img = new Image();
+
+            img.onload = () => resolve(true);
+            img.onerror = () => resolve(false);
+
+            img.src = src;
+
+        });
+
+    });
+
+    return Promise.all(promises);
+}
+
+
+/* =================================
+   INICIALIZAÇÃO
+================================= */
+
+async function initialize() {
+
+    // Aguarda o carregamento das imagens
+    await preloadImages();
+prism.style.transitionDuration = `${ROTATION_DURATION}ms`;
+    // Distribui as três primeiras imagens
+    faces[0].src = images[0];
+    faces[1].src = images[1];
+    faces[2].src = images[2];
+
+    // Começa depois da primeira pausa
+    setTimeout(rotatePrism, PAUSE_DURATION);
+}
+
+
+/* =================================
+   ROTAÇÃO
+================================= */
+
+function rotatePrism() {
+
+    if (isRotating) return;
+
+    isRotating = true;
+
+    // Rotaciona exatamente 120 graus
+    rotation -= 120;
+
+    prism.style.transform = `rotateY(${rotation}deg)`;
+
+}
+
+
+/* =================================
+   FINALIZAÇÃO DA ROTAÇÃO
+================================= */
+
+prism.addEventListener("transitionend", event => {
+
+    if (event.target !== prism) return;
+    if (event.propertyName !== "transform") return;
+
+    // A face anterior agora está escondida
+    const hiddenFace = frontFace;
+
+    // A próxima face passa a ficar de frente
+    frontFace = (frontFace + 1) % 3;
+
+    // Substitui somente a imagem escondida
+    faces[hiddenFace].src = images[nextImage];
+
+    // Avança na sequência
+    nextImage = (nextImage + 1) % images.length;
+
+    isRotating = false;
+
+    // Aguarda antes da próxima rotação
+    setTimeout(rotatePrism, PAUSE_DURATION);
+
+});
+
+
+/* =================================
+   INICIAR
+================================= */
+
+initialize();
+
+</script>
+
+</body>
+</html>
