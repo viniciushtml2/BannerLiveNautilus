@@ -165,8 +165,8 @@
 
     .preview-face {
       position: absolute;
-      left: 0;
-      top: 0;
+      left: 50%;
+      top: 50%;
       overflow: hidden;
       backface-visibility: visible;
       background: #111;
@@ -330,6 +330,13 @@
   let lastPointerX = 0;
   let lastPointerY = 0;
 
+  // Recycle the rear face as the prism is rotated, like the public banner.
+  let previewFaceItems = [null, null, null];
+  let previewNextImageIndex = 0;
+  let previewFrontFace = 0;
+  let previewRotationAnchor = rotationY;
+  let previewStepBucket = 0;
+
   function showMessage(element, message, error = false) {
     element.textContent = message;
     element.classList.toggle("error", error);
@@ -463,8 +470,14 @@
       `Aspect ratio: ${ratioW}:${ratioH} (${(width / height).toFixed(3)}:1)`;
   }
 
-  widthInput.addEventListener("input", updateAspectRatio);
-  heightInput.addEventListener("input", updateAspectRatio);
+  widthInput.addEventListener("input", () => {
+    updateAspectRatio();
+    updatePreviewGeometry();
+  });
+  heightInput.addEventListener("input", () => {
+    updateAspectRatio();
+    updatePreviewGeometry();
+  });
 
   document.getElementById("save-dimensions").addEventListener("click", savePrismSettings);
 
@@ -642,18 +655,29 @@
 
     Object.assign(item, changes);
     renderImages();
-    renderPreview();
+    updatePreviewFaceImages();
     showMessage(listMessage, "Image settings saved.");
   }
 
   function renderPreview() {
     const activeImages = images.filter(item => item.is_active);
 
+    previewFaceItems = [0, 1, 2].map(index =>
+      activeImages.length ? activeImages[index % activeImages.length] : null
+    );
+    previewNextImageIndex = activeImages.length ? (3 % activeImages.length) : 0;
+    previewFrontFace = 0;
+    previewRotationAnchor = rotationY;
+    previewStepBucket = 0;
+
+    updatePreviewFaceImages();
+    updatePreviewGeometry();
+  }
+
+  function updatePreviewFaceImages() {
     previewFaces.forEach((face, index) => {
       const img = face.querySelector("img");
-      const item = activeImages.length
-        ? activeImages[index % activeImages.length]
-        : null;
+      const item = previewFaceItems[index];
 
       if (!item) {
         img.removeAttribute("src");
@@ -672,13 +696,42 @@
         img.alt = "Image could not be loaded";
       };
     });
+  }
 
-    updatePreviewGeometry();
+  function advancePreviewImage(direction) {
+    const activeImages = images.filter(item => item.is_active);
+    if (!activeImages.length) return;
+
+    const hiddenFace = previewFrontFace;
+    previewFrontFace = direction < 0
+      ? (previewFrontFace + 1) % 3
+      : (previewFrontFace + 2) % 3;
+
+    previewFaceItems[hiddenFace] =
+      activeImages[previewNextImageIndex % activeImages.length];
+
+    previewNextImageIndex = (previewNextImageIndex + 1) % activeImages.length;
+    updatePreviewFaceImages();
+  }
+
+  function processPreviewRotationSteps() {
+    const currentBucket = Math.trunc((rotationY - previewRotationAnchor) / 120);
+    const difference = currentBucket - previewStepBucket;
+
+    if (difference === 0) return;
+
+    const direction = difference > 0 ? 1 : -1;
+    for (let i = 0; i < Math.abs(difference); i++) {
+      advancePreviewImage(direction);
+    }
+
+    previewStepBucket = currentBucket;
   }
 
   function updatePreviewGeometry() {
-    const width = prismSettings.width_px;
-    const height = prismSettings.height_px;
+    // Read the controls so all three faces resize immediately, before saving.
+    const width = Number(widthInput.value) || prismSettings.width_px;
+    const height = Number(heightInput.value) || prismSettings.height_px;
     const depth = width / (2 * Math.sqrt(3));
 
     previewPrism.style.width = width + "px";
@@ -687,6 +740,8 @@
     previewFaces.forEach((face, index) => {
       face.style.width = width + "px";
       face.style.height = height + "px";
+      face.style.marginLeft = (-width / 2) + "px";
+      face.style.marginTop = (-height / 2) + "px";
       face.style.transform = `rotateY(${index * 120}deg) translateZ(${depth}px)`;
     });
 
@@ -697,8 +752,8 @@
   }
 
   function updatePreviewTransform() {
-    const width = prismSettings.width_px;
-    const height = prismSettings.height_px;
+    const width = Number(widthInput.value) || prismSettings.width_px;
+    const height = Number(heightInput.value) || prismSettings.height_px;
     const availableWidth = Math.max(200, previewScene.clientWidth - 70);
     const availableHeight = Math.max(180, previewScene.clientHeight - 70);
     const fitScale = Math.min(availableWidth / (width * 1.12), availableHeight / (height * 1.35), 1);
@@ -726,6 +781,7 @@
     rotationY += deltaX * 0.65;
     rotationX -= deltaY * 0.55;
     rotationX = Math.max(-85, Math.min(85, rotationX));
+    processPreviewRotationSteps();
 
     lastPointerX = event.clientX;
     lastPointerY = event.clientY;
@@ -756,6 +812,7 @@
     rotationX = -18;
     rotationY = -30;
     zoom = 1;
+    renderPreview();
     updatePreviewTransform();
   });
 
