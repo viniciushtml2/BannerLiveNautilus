@@ -243,7 +243,7 @@
 
     <section class="panel">
       <h2>Interactive prism preview</h2>
-      <div class="preview-help">Click and drag to rotate the prism. The preview automatically fits the available space.</div>
+      <div class="preview-help">Drag to rotate the prism. Use the mouse wheel or trackpad to zoom in and out.</div>
       <div id="preview-scene" class="preview-scene" aria-label="Interactive 3D prism preview">
         <div id="preview-prism" class="preview-prism">
           <div class="preview-face"><img alt="Prism face 1"></div>
@@ -335,6 +335,7 @@
   let prismSettings = { width_px: RATIO_WIDTH, height_px: 237 };
   let rotationX = -18;
   let rotationY = -30;
+  let previewZoom = 1;
   let dragPointerId = null;
   let lastPointerX = 0;
   let lastPointerY = 0;
@@ -719,19 +720,21 @@
   function updatePreviewGeometry() {
     // Read the controls so all three faces resize immediately, before saving.
     const { width_px: width, height_px: height } = getSelectedDimensions();
+    // A regular triangular prism has three identical rectangular faces.
+    // Each face is centred on the same axis and offset by the apothem.
     const depth = width / (2 * Math.sqrt(3));
 
-    previewPrism.style.width = width + "px";
-    previewPrism.style.height = height + "px";
+    previewPrism.style.width = `${width}px`;
+    previewPrism.style.height = `${height}px`;
 
     previewFaces.forEach((face, index) => {
-      face.style.setProperty("width", `${width}px`, "important");
-      face.style.setProperty("height", `${height}px`, "important");
-      face.style.left = "50%";
-      face.style.top = "50%";
-      face.style.marginLeft = `${-width / 2}px`;
-      face.style.marginTop = `${-height / 2}px`;
-      face.style.transform = `rotateY(${index * 120}deg) translateZ(${depth}px)`;
+      face.style.width = `${width}px`;
+      face.style.height = `${height}px`;
+      face.style.left = "0px";
+      face.style.top = "0px";
+      face.style.margin = "0";
+      face.style.transformOrigin = "50% 50%";
+      face.style.transform = `translate(-50%, -50%) rotateY(${index * 120}deg) translateZ(${depth}px)`;
     });
 
     document.getElementById("preview-dimensions").textContent =
@@ -744,18 +747,27 @@
     const { width_px: width, height_px: height } = getSelectedDimensions();
     const availableWidth = Math.max(200, previewScene.clientWidth - 70);
     const availableHeight = Math.max(180, previewScene.clientHeight - 70);
-    // Keep the preview at a fixed, uniform scale. Wheel input is deliberately
-    // not used: changing scale while the prism is under perspective can make
-    // the faces appear to stretch or distort.
+    // Fit the complete prism, then apply one uniform zoom factor to the
+    // parent. This cannot change the relative width/height of individual faces.
     const fitScale = Math.min(
-      availableWidth / (width * 1.35),
-      availableHeight / (height * 1.55),
+      availableWidth / (width * 1.65),
+      availableHeight / (height * 1.35),
       1
     );
+    const scale = fitScale * previewZoom;
 
     previewPrism.style.transform =
-      `translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg) scale(${fitScale})`;
+      `translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg) scale(${scale})`;
   }
+
+  // Wheel zoom scales the entire prism uniformly. It does not resize or
+  // distort any face independently. Prevent page scrolling only over preview.
+  previewScene.addEventListener("wheel", event => {
+    event.preventDefault();
+    const zoomFactor = Math.exp(-event.deltaY * 0.001);
+    previewZoom = Math.max(0.55, Math.min(2.25, previewZoom * zoomFactor));
+    updatePreviewTransform();
+  }, { passive: false });
 
   previewScene.addEventListener("pointerdown", event => {
     if (event.button !== 0) return;
@@ -798,6 +810,7 @@
   document.getElementById("reset-preview").addEventListener("click", () => {
     rotationX = -18;
     rotationY = -30;
+    previewZoom = 1;
     renderPreview();
     updatePreviewTransform();
   });
