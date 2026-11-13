@@ -155,15 +155,7 @@
 
     .preview-scene.dragging { cursor: grabbing; }
 
-    .preview-prism {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform-style: preserve-3d;
-      transform-origin: center center;
-      will-change: transform;
-    }
-
+.
     .preview-face {
       position: absolute;
       left: 50%;
@@ -717,36 +709,38 @@
     previewStepBucket = currentBucket;
   }
 
-  function updatePreviewGeometry() {
-    // Read the controls so all three faces resize immediately, before saving.
-    const { width_px: width, height_px: height } = getSelectedDimensions();
-    // A regular triangular prism has three identical rectangular faces.
-    // Each face is centred on the same axis and offset by the apothem.
-    const depth = width / (2 * Math.sqrt(3));
+function updatePreviewGeometry() {
+  const { width_px: width, height_px: height } =
+    getSelectedDimensions();
 
-    previewPrism.style.width = `${width}px`;
-    previewPrism.style.height = `${height}px`;
+  // Apothem of an equilateral triangular cross-section.
+  const depth = width / (2 * Math.tan(Math.PI / 3));
 
-    previewFaces.forEach((face, index) => {
-      face.style.width = `${width}px`;
-      face.style.height = `${height}px`;
-      // Place the centre of every rectangle at the prism's shared axis.
-      // The negative half-size margins centre the face without translating
-      // it away from the prism's coordinate origin.
-      face.style.left = "50%";
-      face.style.top = "50%";
-      face.style.marginLeft = `${-width / 2}px`;
-      face.style.marginTop = `${-height / 2}px`;
-      face.style.transformOrigin = "50% 50%";
-      face.style.transform = `rotateY(${index * 120}deg) translateZ(${depth}px)`;
-    });
+  previewPrism.style.width = `${width}px`;
+  previewPrism.style.height = `${height}px`;
 
-    document.getElementById("preview-dimensions").textContent =
-      `${width} × ${height} px`;
+  previewFaces.forEach((face, index) => {
+    face.style.width = `${width}px`;
+    face.style.height = `${height}px`;
 
-    updatePreviewTransform();
-  }
+    face.style.left = "50%";
+    face.style.top = "50%";
 
+    face.style.marginLeft = `${-width / 2}px`;
+    face.style.marginTop = `${-height / 2}px`;
+
+    // Three equally spaced faces around the same central axis.
+    const angle = index * 120;
+
+    face.style.transform =
+      `rotateY(${angle}deg) translateZ(${depth}px)`;
+  });
+
+  document.getElementById("preview-dimensions").textContent =
+    `${width} × ${height} px`;
+
+  updatePreviewTransform();
+}
   function updatePreviewTransform() {
     const { width_px: width, height_px: height } = getSelectedDimensions();
     const availableWidth = Math.max(200, previewScene.clientWidth - 70);
