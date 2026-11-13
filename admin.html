@@ -716,27 +716,54 @@
     previewStepBucket = currentBucket;
   }
 
+
 function updatePreviewGeometry() {
-  const { width_px: width, height_px: height } =
-    getSelectedDimensions();
+  const { width_px: width, height_px: height } = getSelectedDimensions();
 
   // Distance from the centre axis to each face.
-const depth = width / (2 * Math.sqrt(3));
+  const depth = width / (2 * Math.sqrt(3));
 
-previewFaces.forEach((face, index) => {
-  const angle = index * 120;
+  previewFaces.forEach((face, index) => {
+    const angle = index * 120;
 
-  face.style.width = `${width}px`;
-  face.style.height = `${height}px`;
-  face.style.left = "50%";
-  face.style.top = "50%";
-  face.style.marginLeft = `${-width / 2}px`;
-  face.style.marginTop = `${-height / 2}px`;
-  face.style.transform =
-    `rotateY(${angle}deg) translateZ(${depth}px)`;
-});
+    face.style.width = `${width}px`;
+    face.style.height = `${height}px`;
+    face.style.left = "50%";
+    face.style.top = "50%";
+    face.style.marginLeft = `${-width / 2}px`;
+    face.style.marginTop = `${-height / 2}px`;
+    face.style.transform =
+      `rotateY(${angle}deg) translateZ(${depth}px)`;
+  });
+
   document.getElementById("preview-dimensions").textContent =
     `${width} × ${height} px`;
+
+  updatePreviewTransform();
+}
+
+function updatePreviewTransform() {
+  const { width_px: width, height_px: height } = getSelectedDimensions();
+
+  const availableWidth = Math.max(200, previewScene.clientWidth - 70);
+  const availableHeight = Math.max(180, previewScene.clientHeight - 70);
+
+  const depth = width / (2 * Math.sqrt(3));
+
+  const projectedWidth = width + depth * 2;
+  const projectedHeight = height;
+
+  const fitScale = Math.min(
+    availableWidth / projectedWidth,
+    availableHeight / projectedHeight,
+    1
+  );
+
+  const scale = fitScale * previewZoom;
+
+  previewPrism.style.transform =
+    `translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg) scale(${scale})`;
+}
 
 
 function updatePreviewTransform() {
