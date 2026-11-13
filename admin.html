@@ -738,24 +738,32 @@ previewFaces.forEach((face, index) => {
   document.getElementById("preview-dimensions").textContent =
     `${width} × ${height} px`;
 
-  updatePreviewTransform();
-}
-  function updatePreviewTransform() {
-    const { width_px: width, height_px: height } = getSelectedDimensions();
-    const availableWidth = Math.max(200, previewScene.clientWidth - 70);
-    const availableHeight = Math.max(180, previewScene.clientHeight - 70);
-    // Fit the complete prism, then apply one uniform zoom factor to the
-    // parent. This cannot change the relative width/height of individual faces.
-    const fitScale = Math.min(
-      availableWidth / (width * 1.65),
-      availableHeight / (height * 1.35),
-      1
-    );
-    const scale = fitScale * previewZoom;
 
-    previewPrism.style.transform =
-      `translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg) scale(${scale})`;
-  }
+function updatePreviewTransform() {
+  const { width_px: width, height_px: height } = getSelectedDimensions();
+
+  const availableWidth = Math.max(200, previewScene.clientWidth - 70);
+  const availableHeight = Math.max(180, previewScene.clientHeight - 70);
+
+  // The prism's triangular cross-section has an apothem of depth.
+  const depth = width / (2 * Math.sqrt(3));
+
+  // Account for the full prism dimensions before applying perspective.
+  const projectedWidth = width + depth * 2;
+  const projectedHeight = height;
+
+  const fitScale = Math.min(
+    availableWidth / projectedWidth,
+    availableHeight / projectedHeight,
+    1
+  );
+
+  const scale = fitScale * previewZoom;
+
+  previewPrism.style.transform =
+    `translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg) scale(${scale})`;
+}
+
 
   // Wheel zoom scales the entire prism uniformly. It does not resize or
   // distort any face independently. Prevent page scrolling only over preview.
