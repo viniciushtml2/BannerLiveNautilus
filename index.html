@@ -29,8 +29,7 @@ body {
 
 .scene {
     width: 600px;
-    height: 350px;
-
+    min-height: 350px;
     perspective: 1400px;
 
     display: flex;
@@ -42,23 +41,19 @@ body {
 
 .prism {
     position: relative;
-
     width: 500px;
-    height: 280px;
 
     transform-style: preserve-3d;
     transform: rotateY(0deg);
-
     transition: transform 2.5s ease-in-out;
 }
-
 /* Faces laterais */
 
 .face {
     position: absolute;
 
     width: 500px;
-    height: 280px;
+height: 100%;
 
     top: 0;
     left: 0;
@@ -146,13 +141,19 @@ const PAUSE_DURATION = 4000;
 ================================= */
 
 const prism = document.getElementById("prism");
+const scene = document.querySelector(".scene");
+
+const faceElements = [
+    document.querySelector(".face-a"),
+    document.querySelector(".face-b"),
+    document.querySelector(".face-c")
+];
 
 const faces = [
     document.getElementById("imageA"),
     document.getElementById("imageB"),
     document.getElementById("imageC")
 ];
-
 
 /* =================================
    ESTADO
@@ -201,7 +202,48 @@ function preloadImage(image) {
     });
 
 }
+async function refreshPrismSettings() {
 
+    const { data, error } = await db
+        .from("prism_settings")
+        .select("width_px, height_px")
+        .eq("id", 1)
+        .single();
+
+    if (error) {
+        console.error("Erro ao buscar configurações:", error);
+        return;
+    }
+
+    const width = data.width_px;
+    const height = data.height_px;
+
+    const depth = width / (2 * Math.sqrt(3));
+
+    // Update prism dimensions
+    prism.style.width = `${width}px`;
+    prism.style.height = `${height}px`;
+
+    // Update all three faces
+    faceElements.forEach(face => {
+        face.style.width = `${width}px`;
+        face.style.height = `${height}px`;
+    });
+
+    // Update the triangular prism geometry
+    faceElements[0].style.transform =
+        `rotateY(0deg) translateZ(${depth}px)`;
+
+    faceElements[1].style.transform =
+        `rotateY(120deg) translateZ(${depth}px)`;
+
+    faceElements[2].style.transform =
+        `rotateY(240deg) translateZ(${depth}px)`;
+
+    // Adjust the preview area to the new height
+    scene.style.height = `${height + 70}px`;
+
+}
 
 /* =================================
    BUSCAR IMAGENS NO SUPABASE
@@ -213,7 +255,7 @@ async function refreshImages() {
 
     const { data, error } = await db
         .from("prism_images")
-        .select("image_url, name, position, created_at")
+.select("image_url, name, position, created_at, fit_mode, object_position")
         .eq("is_active", true)
         .order("position", { ascending: true })
         .order("created_at", { ascending: true });
@@ -277,22 +319,34 @@ function applyPendingImages() {
        na ordem em que passarão pela frente.
     */
 
-    for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 3; i++) {
 
-        const faceIndex = (frontFace + i) % 3;
+    const faceIndex = (frontFace + i) % 3;
 
-        const imageIndex = i % activeImages.length;
+    const imageIndex = i % activeImages.length;
 
-        faces[faceIndex].src = activeImages[imageIndex].image_url;
+    setFaceImage(faceIndex, activeImages[imageIndex]);
 
-    }
-
+}
     // Próxima imagem após as três faces iniciais
     nextImage = 3 % activeImages.length;
 
 }
 
+function setFaceImage(faceIndex, image) {
 
+    const face = faces[faceIndex];
+
+    face.src = image.image_url;
+    face.alt = image.name;
+
+    face.style.objectFit =
+        image.fit_mode === "fill" ? "fill" : "cover";
+
+    face.style.objectPosition =
+        image.object_position || "center";
+
+}
 /* =================================
    AGENDAMENTO DA ROTAÇÃO
 ================================= */
@@ -314,11 +368,13 @@ async function initialize() {
 
     prism.style.transitionDuration =
         `${ROTATION_DURATION / 1000}s`;
+// Fetch images and settings before starting
+await Promise.all([
+    refreshImages(),
+    refreshPrismSettings()
+]);
 
-    // Busca as imagens antes de iniciar
-    await refreshImages();
-
-    applyPendingImages();
+applyPendingImages();
 
     initialized = true;
 
@@ -331,19 +387,28 @@ async function initialize() {
     // Escuta alterações na tabela do Supabase
     db
         .channel("prism-images-channel")
-        .on(
-            "postgres_changes",
-            {
-                event: "*",
-                schema: "public",
-                table: "prism_images"
-            },
-            () => {
-
-                refreshImages();
-
-            }
-        )
+.on(
+    "postgres_changes",
+    {
+        event: "*",
+        schema: "public",
+        table: "prism_images"
+    },
+    () => {
+        refreshImages();
+    }
+)
+.on(
+    "postgres_changes",
+    {
+        event: "*",
+        schema: "public",
+        table: "prism_settings"
+    },
+    () => {
+        refreshPrismSettings();
+    }
+)
         .subscribe(status => {
 
             if (status === "SUBSCRIBED") {
@@ -414,9 +479,7 @@ prism.addEventListener("transitionend", event => {
     } else if (activeImages.length > 0) {
 
         // Substitui somente a face escondida
-        faces[hiddenFace].src =
-            activeImages[nextImage].image_url;
-
+     setFaceImage(hiddenFace, activeImages[nextImage]);
         // Avança na sequência
         nextImage =
             (nextImage + 1) % activeImages.length;
