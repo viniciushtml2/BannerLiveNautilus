@@ -730,11 +730,15 @@
     previewFaces.forEach((face, index) => {
       face.style.width = `${width}px`;
       face.style.height = `${height}px`;
-      face.style.left = "0px";
-      face.style.top = "0px";
-      face.style.margin = "0";
+      // Place the centre of every rectangle at the prism's shared axis.
+      // The negative half-size margins centre the face without translating
+      // it away from the prism's coordinate origin.
+      face.style.left = "50%";
+      face.style.top = "50%";
+      face.style.marginLeft = `${-width / 2}px`;
+      face.style.marginTop = `${-height / 2}px`;
       face.style.transformOrigin = "50% 50%";
-      face.style.transform = `translate(-50%, -50%) rotateY(${index * 120}deg) translateZ(${depth}px)`;
+      face.style.transform = `rotateY(${index * 120}deg) translateZ(${depth}px)`;
     });
 
     document.getElementById("preview-dimensions").textContent =
