@@ -1,4 +1,3 @@
- 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,10 +28,7 @@
       font-family: Georgia, serif;
     }
 
-    .container {
-      max-width: 850px;
-      margin: 0 auto;
-    }
+    .container { max-width: 1000px; margin: 0 auto; }
 
     h1 {
       margin: 0 0 6px;
@@ -40,10 +36,7 @@
       letter-spacing: 1px;
     }
 
-    .subtitle {
-      color: var(--muted);
-      margin-bottom: 30px;
-    }
+    .subtitle { color: var(--muted); margin-bottom: 24px; }
 
     .panel {
       background: var(--panel);
@@ -53,11 +46,7 @@
       margin-bottom: 22px;
     }
 
-    h2 {
-      margin-top: 0;
-      font-size: 19px;
-      font-weight: normal;
-    }
+    h2 { margin-top: 0; font-size: 19px; font-weight: normal; }
 
     label {
       display: block;
@@ -66,7 +55,7 @@
       margin: 14px 0 6px;
     }
 
-    input {
+    input, select {
       width: 100%;
       padding: 11px;
       background: var(--bg);
@@ -74,6 +63,7 @@
       border: 1px solid var(--border);
       border-radius: 4px;
       font: inherit;
+      min-width: 0;
     }
 
     button {
@@ -86,40 +76,17 @@
       font: inherit;
     }
 
-    button:hover {
-      border-color: var(--accent);
-    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: #19170f; border-color: var(--accent); }
+    button.danger { color: #e59b94; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
 
-    button.primary {
-      background: var(--accent);
-      color: #19170f;
-      border-color: var(--accent);
-    }
-
-    button.danger {
-      color: #e59b94;
-    }
-
-    button:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 15px;
-    }
-
-    .image-list {
-      display: grid;
-      gap: 12px;
-    }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; }
+    .image-list { display: grid; gap: 12px; }
 
     .image-card {
       display: grid;
-      grid-template-columns: 120px 1fr;
+      grid-template-columns: 120px minmax(0, 1fr);
       gap: 16px;
       padding: 14px;
       background: var(--panel-light);
@@ -127,7 +94,7 @@
       border-radius: 6px;
     }
 
-    .image-card img {
+    .image-card > img {
       width: 120px;
       height: 90px;
       object-fit: cover;
@@ -135,31 +102,11 @@
       border-radius: 3px;
     }
 
-    .image-info {
-      min-width: 0;
-    }
-
-    .image-name {
-      font-size: 17px;
-      margin-bottom: 5px;
-    }
-
-    .image-url {
-      color: var(--muted);
-      font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-
-    .status {
-      display: inline-block;
-      margin-top: 8px;
-      color: var(--accent);
-      font-size: 12px;
-    }
-
-    .status.inactive {
-      color: var(--muted);
-    }
+    .image-info { min-width: 0; }
+    .image-name { font-size: 17px; margin-bottom: 5px; }
+    .image-url { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .status { display: inline-block; margin-top: 8px; color: var(--accent); font-size: 12px; }
+    .status.inactive { color: var(--muted); }
 
     .message {
       margin-top: 14px;
@@ -168,10 +115,7 @@
       overflow-wrap: anywhere;
     }
 
-    .message.error {
-      color: #e59b94;
-    }
-
+    .message.error { color: #e59b94; }
     .hidden { display: none !important; }
 
     .topbar {
@@ -182,68 +126,168 @@
       margin-bottom: 20px;
     }
 
-    @media (max-width: 520px) {
-      .image-card {
-        grid-template-columns: 85px 1fr;
-        gap: 10px;
-      }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
 
-      .image-card img {
-        width: 85px;
-        height: 80px;
-      }
+    .settings-grid label { margin-top: 0; }
+    .ratio-readout { color: var(--accent); font-size: 13px; margin-top: 12px; }
 
+    .preview-help { color: var(--muted); font-size: 13px; margin: -8px 0 14px; }
+
+    .preview-scene {
+      position: relative;
+      width: 100%;
+      height: 410px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background:
+        radial-gradient(ellipse at center, #353126 0%, #211f19 48%, #171611 100%);
+      perspective: 1400px;
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .preview-scene.dragging { cursor: grabbing; }
+
+    .preview-prism {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform-style: preserve-3d;
+      transform-origin: center center;
+      will-change: transform;
+    }
+
+    .preview-face {
+      position: absolute;
+      left: 0;
+      top: 0;
+      overflow: hidden;
+      backface-visibility: visible;
+      background: #111;
+      border: 1px solid rgba(255,255,255,.18);
+    }
+
+    .preview-face img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      pointer-events: none;
+    }
+
+    .preview-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .image-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+      max-width: 520px;
+    }
+
+    .image-options label { margin: 0 0 5px; }
+
+    @media (max-width: 600px) {
+      body { padding: 22px 12px; }
       .panel { padding: 16px; }
+      .image-card { grid-template-columns: 85px minmax(0, 1fr); gap: 10px; }
+      .image-card > img { width: 85px; height: 80px; }
+      .settings-grid, .image-options { grid-template-columns: 1fr; }
+      .preview-scene { height: 330px; }
     }
   </style>
 </head>
 
 <body>
 <div class="container">
-
   <h1>Prism Admin</h1>
   <div class="subtitle">Image rotation management</div>
 
   <section id="login-panel" class="panel">
     <h2>Administrator login</h2>
-
     <form id="login-form">
       <label for="email">Email</label>
       <input id="email" type="email" required autocomplete="username">
-
       <label for="password">Password</label>
       <input id="password" type="password" required autocomplete="current-password">
-
       <div class="actions">
         <button class="primary" type="submit">Sign in</button>
       </div>
     </form>
-
     <div id="login-message" class="message"></div>
   </section>
 
   <section id="admin-panel" class="hidden">
-
     <div class="topbar">
       <div id="account-label" class="subtitle"></div>
       <button id="logout-button">Sign out</button>
     </div>
 
     <section class="panel">
-      <h2>Add an image</h2>
+      <h2>Interactive prism preview</h2>
+      <div class="preview-help">Click and drag to rotate the prism. Use the mouse wheel or trackpad to zoom.</div>
+      <div id="preview-scene" class="preview-scene" aria-label="Interactive 3D prism preview">
+        <div id="preview-prism" class="preview-prism">
+          <div class="preview-face"><img alt="Prism face 1"></div>
+          <div class="preview-face"><img alt="Prism face 2"></div>
+          <div class="preview-face"><img alt="Prism face 3"></div>
+        </div>
+      </div>
+      <div class="preview-note">
+        <span id="preview-dimensions">500 × 280 px</span>
+        <span>Drag horizontally and vertically to inspect all three faces.</span>
+      </div>
+      <div class="actions">
+        <button id="reset-preview" type="button">Reset view</button>
+      </div>
+    </section>
 
+    <section class="panel">
+      <h2>Global prism dimensions</h2>
+      <div class="subtitle">These dimensions apply to all three faces.</div>
+      <div class="settings-grid">
+        <div>
+          <label for="prism-width">Face width (px)</label>
+          <input id="prism-width" type="number" min="100" max="2000" step="1" value="500">
+        </div>
+        <div>
+          <label for="prism-height">Face height (px)</label>
+          <input id="prism-height" type="number" min="100" max="1500" step="1" value="280">
+        </div>
+      </div>
+      <div id="aspect-ratio" class="ratio-readout">Aspect ratio: 25:14 (1.786:1)</div>
+      <div class="actions">
+        <button id="save-dimensions" class="primary" type="button">Save dimensions</button>
+      </div>
+      <div id="settings-message" class="message"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Add an image</h2>
       <form id="add-form">
         <label for="image-name">Image name</label>
         <input id="image-name" type="text" placeholder="e.g. Mountain landscape" required>
-
         <label for="image-url">Image URL</label>
         <input id="image-url" type="url" placeholder="https://example.com/image.jpg" required>
-
         <div class="actions">
           <button class="primary" type="submit">Add image</button>
         </div>
       </form>
-
       <div id="add-message" class="message"></div>
     </section>
 
@@ -253,29 +297,38 @@
       <div id="image-list" class="image-list"></div>
       <div id="list-message" class="message"></div>
     </section>
-
   </section>
 </div>
 
 <script>
   const SUPABASE_URL = "https://ylpymxsywyrygzvpqpon.supabase.co";
   const SUPABASE_KEY = "sb_publishable_FPiPPF6vOQdevY-mrh1GbA_1TSX86HN";
+  const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
 
-const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
-
-  const db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   const loginPanel = document.getElementById("login-panel");
   const adminPanel = document.getElementById("admin-panel");
   const loginMessage = document.getElementById("login-message");
   const addMessage = document.getElementById("add-message");
   const listMessage = document.getElementById("list-message");
+  const settingsMessage = document.getElementById("settings-message");
   const imageList = document.getElementById("image-list");
 
+  const previewScene = document.getElementById("preview-scene");
+  const previewPrism = document.getElementById("preview-prism");
+  const previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
+  const widthInput = document.getElementById("prism-width");
+  const heightInput = document.getElementById("prism-height");
+
   let images = [];
+  let prismSettings = { width_px: 500, height_px: 280 };
+  let rotationX = -18;
+  let rotationY = -30;
+  let zoom = 1;
+  let dragPointerId = null;
+  let lastPointerX = 0;
+  let lastPointerY = 0;
 
   function showMessage(element, message, error = false) {
     element.textContent = message;
@@ -285,8 +338,7 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
   function setLoggedIn(user) {
     loginPanel.classList.add("hidden");
     adminPanel.classList.remove("hidden");
-    document.getElementById("account-label").textContent =
-      "Signed in as " + user.email;
+    document.getElementById("account-label").textContent = "Signed in as " + user.email;
   }
 
   function setLoggedOut() {
@@ -310,21 +362,17 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
     }
 
     setLoggedIn(data.session.user);
-    await loadImages();
+    await Promise.all([loadImages(), loadPrismSettings()]);
   }
 
   document.getElementById("login-form").addEventListener("submit", async (event) => {
     event.preventDefault();
-
     showMessage(loginMessage, "Signing in...");
 
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
 
-    const { data, error } = await db.auth.signInWithPassword({
-      email,
-      password
-    });
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
 
     if (error) {
       showMessage(loginMessage, error.message, true);
@@ -339,7 +387,7 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
 
     showMessage(loginMessage, "");
     setLoggedIn(data.user);
-    await loadImages();
+    await Promise.all([loadImages(), loadPrismSettings()]);
   });
 
   document.getElementById("logout-button").addEventListener("click", async () => {
@@ -364,6 +412,106 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
 
     images = data || [];
     renderImages();
+    renderPreview();
+  }
+
+  async function loadPrismSettings() {
+    showMessage(settingsMessage, "Loading prism settings...");
+
+    const { data, error } = await db
+      .from("prism_settings")
+      .select("width_px, height_px")
+      .eq("id", 1)
+      .single();
+
+    if (error) {
+      showMessage(settingsMessage, error.message, true);
+      return;
+    }
+
+    prismSettings = {
+      width_px: data.width_px,
+      height_px: data.height_px
+    };
+
+    widthInput.value = prismSettings.width_px;
+    heightInput.value = prismSettings.height_px;
+    updateAspectRatio();
+    updatePreviewGeometry();
+    showMessage(settingsMessage, "");
+  }
+
+  function gcd(a, b) {
+    while (b) [a, b] = [b, a % b];
+    return a;
+  }
+
+  function updateAspectRatio() {
+    const width = Number(widthInput.value);
+    const height = Number(heightInput.value);
+
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      document.getElementById("aspect-ratio").textContent = "Enter valid dimensions.";
+      return;
+    }
+
+    const divisor = gcd(Math.round(width), Math.round(height));
+    const ratioW = Math.round(width) / divisor;
+    const ratioH = Math.round(height) / divisor;
+
+    document.getElementById("aspect-ratio").textContent =
+      `Aspect ratio: ${ratioW}:${ratioH} (${(width / height).toFixed(3)}:1)`;
+  }
+
+  widthInput.addEventListener("input", updateAspectRatio);
+  heightInput.addEventListener("input", updateAspectRatio);
+
+  document.getElementById("save-dimensions").addEventListener("click", savePrismSettings);
+
+  async function savePrismSettings() {
+    const width = Number(widthInput.value);
+    const height = Number(heightInput.value);
+
+    if (!Number.isInteger(width) || width < 100 || width > 2000) {
+      showMessage(settingsMessage, "Width must be an integer between 100 and 2000.", true);
+      return;
+    }
+
+    if (!Number.isInteger(height) || height < 100 || height > 1500) {
+      showMessage(settingsMessage, "Height must be an integer between 100 and 1500.", true);
+      return;
+    }
+
+    showMessage(settingsMessage, "Saving dimensions...");
+
+    const { data, error } = await db
+      .from("prism_settings")
+      .update({
+        width_px: width,
+        height_px: height,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", 1)
+      .select("width_px, height_px")
+      .single();
+
+    if (error) {
+      showMessage(settingsMessage, error.message, true);
+      return;
+    }
+
+    prismSettings = { width_px: data.width_px, height_px: data.height_px };
+    updateAspectRatio();
+    updatePreviewGeometry();
+    showMessage(settingsMessage, "Prism dimensions saved.");
+  }
+
+  function getPositionValue(value) {
+    const allowed = [
+      "center", "top", "bottom", "left", "right",
+      "top left", "top right", "bottom left", "bottom right"
+    ];
+    return allowed.includes(value) ? value : "center";
   }
 
   function renderImages() {
@@ -384,6 +532,8 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
       preview.src = item.image_url;
       preview.alt = item.name;
       preview.loading = "lazy";
+      preview.style.objectFit = item.fit_mode === "fill" ? "fill" : "cover";
+      preview.style.objectPosition = getPositionValue(item.object_position);
 
       preview.onerror = () => {
         preview.removeAttribute("src");
@@ -404,6 +554,46 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
       const status = document.createElement("div");
       status.className = "status" + (item.is_active ? "" : " inactive");
       status.textContent = item.is_active ? "Active" : "Inactive";
+
+      const options = document.createElement("div");
+      options.className = "image-options";
+
+      const fitWrap = document.createElement("div");
+      const fitLabel = document.createElement("label");
+      fitLabel.textContent = "Fit mode";
+      const fitSelect = document.createElement("select");
+      fitSelect.innerHTML = `
+        <option value="cover">Cover (crop, preserve proportions)</option>
+        <option value="fill">Fill (stretch to face)</option>
+      `;
+      fitSelect.value = item.fit_mode || "cover";
+      fitSelect.addEventListener("change", () => updateImageSetting(item, {
+        fit_mode: fitSelect.value
+      }));
+      fitWrap.append(fitLabel, fitSelect);
+
+      const positionWrap = document.createElement("div");
+      const positionLabel = document.createElement("label");
+      positionLabel.textContent = "Image position";
+      const positionSelect = document.createElement("select");
+      positionSelect.innerHTML = `
+        <option value="center">Center</option>
+        <option value="top">Top</option>
+        <option value="bottom">Bottom</option>
+        <option value="left">Left</option>
+        <option value="right">Right</option>
+        <option value="top left">Top left</option>
+        <option value="top right">Top right</option>
+        <option value="bottom left">Bottom left</option>
+        <option value="bottom right">Bottom right</option>
+      `;
+      positionSelect.value = getPositionValue(item.object_position);
+      positionSelect.addEventListener("change", () => updateImageSetting(item, {
+        object_position: positionSelect.value
+      }));
+      positionWrap.append(positionLabel, positionSelect);
+
+      options.append(fitWrap, positionWrap);
 
       const actions = document.createElement("div");
       actions.className = "actions";
@@ -430,13 +620,148 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
       remove.addEventListener("click", () => deleteImage(item));
 
       actions.append(up, down, toggle, remove);
-      info.append(name, url, status, actions);
+      info.append(name, url, status, options, actions);
       card.append(preview, info);
       imageList.append(card);
     });
   }
 
-  document.getElementById("add-form").addEventListener("submit", async (event) => {
+  async function updateImageSetting(item, changes) {
+    showMessage(listMessage, "Saving image settings...");
+
+    const { error } = await db
+      .from("prism_images")
+      .update(changes)
+      .eq("id", item.id);
+
+    if (error) {
+      showMessage(listMessage, error.message, true);
+      await loadImages();
+      return;
+    }
+
+    Object.assign(item, changes);
+    renderImages();
+    renderPreview();
+    showMessage(listMessage, "Image settings saved.");
+  }
+
+  function renderPreview() {
+    const activeImages = images.filter(item => item.is_active);
+
+    previewFaces.forEach((face, index) => {
+      const img = face.querySelector("img");
+      const item = activeImages.length
+        ? activeImages[index % activeImages.length]
+        : null;
+
+      if (!item) {
+        img.removeAttribute("src");
+        img.alt = "No active image";
+        face.style.background = "#25231c";
+        return;
+      }
+
+      img.src = item.image_url;
+      img.alt = item.name;
+      img.style.objectFit = item.fit_mode === "fill" ? "fill" : "cover";
+      img.style.objectPosition = getPositionValue(item.object_position);
+      face.style.background = "#111";
+      img.onerror = () => {
+        img.removeAttribute("src");
+        img.alt = "Image could not be loaded";
+      };
+    });
+
+    updatePreviewGeometry();
+  }
+
+  function updatePreviewGeometry() {
+    const width = prismSettings.width_px;
+    const height = prismSettings.height_px;
+    const depth = width / (2 * Math.sqrt(3));
+
+    previewPrism.style.width = width + "px";
+    previewPrism.style.height = height + "px";
+
+    previewFaces.forEach((face, index) => {
+      face.style.width = width + "px";
+      face.style.height = height + "px";
+      face.style.transform = `rotateY(${index * 120}deg) translateZ(${depth}px)`;
+    });
+
+    document.getElementById("preview-dimensions").textContent =
+      `${width} × ${height} px`;
+
+    updatePreviewTransform();
+  }
+
+  function updatePreviewTransform() {
+    const width = prismSettings.width_px;
+    const height = prismSettings.height_px;
+    const availableWidth = Math.max(200, previewScene.clientWidth - 70);
+    const availableHeight = Math.max(180, previewScene.clientHeight - 70);
+    const fitScale = Math.min(availableWidth / (width * 1.12), availableHeight / (height * 1.35), 1);
+    const scale = fitScale * zoom;
+
+    previewPrism.style.transform =
+      `translate(-50%, -50%) rotateX(${rotationX}deg) rotateY(${rotationY}deg) scale(${scale})`;
+  }
+
+  previewScene.addEventListener("pointerdown", event => {
+    if (event.button !== 0) return;
+    dragPointerId = event.pointerId;
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+    previewScene.setPointerCapture(event.pointerId);
+    previewScene.classList.add("dragging");
+  });
+
+  previewScene.addEventListener("pointermove", event => {
+    if (dragPointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - lastPointerX;
+    const deltaY = event.clientY - lastPointerY;
+
+    rotationY += deltaX * 0.65;
+    rotationX -= deltaY * 0.55;
+    rotationX = Math.max(-85, Math.min(85, rotationX));
+
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+    updatePreviewTransform();
+  });
+
+  function endPreviewDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    dragPointerId = null;
+    previewScene.classList.remove("dragging");
+  }
+
+  previewScene.addEventListener("pointerup", endPreviewDrag);
+  previewScene.addEventListener("pointercancel", endPreviewDrag);
+  previewScene.addEventListener("lostpointercapture", () => {
+    dragPointerId = null;
+    previewScene.classList.remove("dragging");
+  });
+
+  previewScene.addEventListener("wheel", event => {
+    event.preventDefault();
+    zoom *= event.deltaY < 0 ? 1.08 : 0.92;
+    zoom = Math.max(0.35, Math.min(2.5, zoom));
+    updatePreviewTransform();
+  }, { passive: false });
+
+  document.getElementById("reset-preview").addEventListener("click", () => {
+    rotationX = -18;
+    rotationY = -30;
+    zoom = 1;
+    updatePreviewTransform();
+  });
+
+  window.addEventListener("resize", updatePreviewTransform);
+
+  document.getElementById("add-form").addEventListener("submit", async event => {
     event.preventDefault();
 
     const name = document.getElementById("image-name").value.trim();
@@ -444,7 +769,6 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
 
     try {
       const parsedUrl = new URL(imageUrl);
-
       if (!["http:", "https:"].includes(parsedUrl.protocol)) {
         throw new Error("Use an HTTP or HTTPS image URL.");
       }
@@ -463,7 +787,9 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
         name,
         image_url: imageUrl,
         position: nextPosition,
-        is_active: true
+        is_active: true,
+        fit_mode: "cover",
+        object_position: "center"
       });
 
     if (error) {
@@ -479,7 +805,6 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
   async function moveImage(index, direction) {
     const current = images[index];
     const other = images[index + direction];
-
     if (!current || !other) return;
 
     const firstPosition = current.position;
@@ -502,6 +827,7 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
 
     if (secondError) {
       showMessage(listMessage, secondError.message, true);
+      return;
     }
 
     await loadImages();
@@ -547,4 +873,3 @@ const ADMIN_UID = "f96175b7-ecdd-4bd3-bf41-3b4094405f20";
 </script>
 </body>
 </html>
-
