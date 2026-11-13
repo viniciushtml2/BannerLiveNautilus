@@ -147,7 +147,7 @@
       border-radius: 6px;
       background:
         radial-gradient(ellipse at center, #353126 0%, #211f19 48%, #171611 100%);
-      perspective: 1400px;
+    perspective: none;
       touch-action: none;
       cursor: grab;
       user-select: none;
@@ -334,7 +334,7 @@
   let images = [];
   let prismSettings = { width_px: RATIO_WIDTH, height_px: 237 };
   let rotationX = -18;
-  let rotationY = -30;
+  let rotationY = 60;
   let previewZoom = 1;
   let dragPointerId = null;
   let lastPointerX = 0;
@@ -813,7 +813,7 @@
 
   document.getElementById("reset-preview").addEventListener("click", () => {
     rotationX = -18;
-    rotationY = -30;
+    rotationY = 60;
     previewZoom = 1;
     renderPreview();
     updatePreviewTransform();
