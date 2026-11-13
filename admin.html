@@ -1,1 +1,550 @@
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prism Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #151510;
+      --panel: #201f19;
+      --panel-light: #29271f;
+      --text: #e8e2d2;
+      --muted: #a49b87;
+      --accent: #c5a66a;
+      --danger: #bd625b;
+      --border: #3b382e;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 32px 18px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Georgia, serif;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 30px;
+      letter-spacing: 1px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 30px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 22px;
+      margin-bottom: 22px;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 19px;
+      font-weight: normal;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin: 14px 0 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font: inherit;
+    }
+
+    button {
+      padding: 9px 14px;
+      background: var(--panel-light);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #19170f;
+      border-color: var(--accent);
+    }
+
+    button.danger {
+      color: #e59b94;
+    }
+
+    button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 15px;
+    }
+
+    .image-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .image-card {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 16px;
+      padding: 14px;
+      background: var(--panel-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .image-card img {
+      width: 120px;
+      height: 90px;
+      object-fit: cover;
+      background: var(--bg);
+      border-radius: 3px;
+    }
+
+    .image-info {
+      min-width: 0;
+    }
+
+    .image-name {
+      font-size: 17px;
+      margin-bottom: 5px;
+    }
+
+    .image-url {
+      color: var(--muted);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .status {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--accent);
+      font-size: 12px;
+    }
+
+    .status.inactive {
+      color: var(--muted);
+    }
+
+    .message {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--accent);
+      overflow-wrap: anywhere;
+    }
+
+    .message.error {
+      color: #e59b94;
+    }
+
+    .hidden { display: none !important; }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 520px) {
+      .image-card {
+        grid-template-columns: 85px 1fr;
+        gap: 10px;
+      }
+
+      .image-card img {
+        width: 85px;
+        height: 80px;
+      }
+
+      .panel { padding: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1>Prism Admin</h1>
+  <div class="subtitle">Image rotation management</div>
+
+  <section id="login-panel" class="panel">
+    <h2>Administrator login</h2>
+
+    <form id="login-form">
+      <label for="email">Email</label>
+      <input id="email" type="email" required autocomplete="username">
+
+      <label for="password">Password</label>
+      <input id="password" type="password" required autocomplete="current-password">
+
+      <div class="actions">
+        <button class="primary" type="submit">Sign in</button>
+      </div>
+    </form>
+
+    <div id="login-message" class="message"></div>
+  </section>
+
+  <section id="admin-panel" class="hidden">
+
+    <div class="topbar">
+      <div id="account-label" class="subtitle"></div>
+      <button id="logout-button">Sign out</button>
+    </div>
+
+    <section class="panel">
+      <h2>Add an image</h2>
+
+      <form id="add-form">
+        <label for="image-name">Image name</label>
+        <input id="image-name" type="text" placeholder="e.g. Mountain landscape" required>
+
+        <label for="image-url">Image URL</label>
+        <input id="image-url" type="url" placeholder="https://example.com/image.jpg" required>
+
+        <div class="actions">
+          <button class="primary" type="submit">Add image</button>
+        </div>
+      </form>
+
+      <div id="add-message" class="message"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Image collection</h2>
+      <div class="subtitle">Images are displayed in ascending position order.</div>
+      <div id="image-list" class="image-list"></div>
+      <div id="list-message" class="message"></div>
+    </section>
+
+  </section>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://ylpymxsywyrygzvpqpon.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_FPiPPF6vOQdevY-mrh1GbA_1TSX86HN";
+
+  const ADMIN_UID = "b24d26da-10f7-4f04-8dfb-20e3e7dcf99c";
+
+  const db = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  const loginPanel = document.getElementById("login-panel");
+  const adminPanel = document.getElementById("admin-panel");
+  const loginMessage = document.getElementById("login-message");
+  const addMessage = document.getElementById("add-message");
+  const listMessage = document.getElementById("list-message");
+  const imageList = document.getElementById("image-list");
+
+  let images = [];
+
+  function showMessage(element, message, error = false) {
+    element.textContent = message;
+    element.classList.toggle("error", error);
+  }
+
+  function setLoggedIn(user) {
+    loginPanel.classList.add("hidden");
+    adminPanel.classList.remove("hidden");
+    document.getElementById("account-label").textContent =
+      "Signed in as " + user.email;
+  }
+
+  function setLoggedOut() {
+    loginPanel.classList.remove("hidden");
+    adminPanel.classList.add("hidden");
+  }
+
+  async function checkSession() {
+    const { data, error } = await db.auth.getSession();
+
+    if (error || !data.session) {
+      setLoggedOut();
+      return;
+    }
+
+    if (data.session.user.id !== ADMIN_UID) {
+      await db.auth.signOut();
+      setLoggedOut();
+      showMessage(loginMessage, "This account is not authorized.", true);
+      return;
+    }
+
+    setLoggedIn(data.session.user);
+    await loadImages();
+  }
+
+  document.getElementById("login-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    showMessage(loginMessage, "Signing in...");
+
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    const { data, error } = await db.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      showMessage(loginMessage, error.message, true);
+      return;
+    }
+
+    if (data.user.id !== ADMIN_UID) {
+      await db.auth.signOut();
+      showMessage(loginMessage, "This account is not authorized.", true);
+      return;
+    }
+
+    showMessage(loginMessage, "");
+    setLoggedIn(data.user);
+    await loadImages();
+  });
+
+  document.getElementById("logout-button").addEventListener("click", async () => {
+    await db.auth.signOut();
+    setLoggedOut();
+  });
+
+  async function loadImages() {
+    showMessage(listMessage, "Loading images...");
+    imageList.replaceChildren();
+
+    const { data, error } = await db
+      .from("prism_images")
+      .select("*")
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      showMessage(listMessage, error.message, true);
+      return;
+    }
+
+    images = data || [];
+    renderImages();
+  }
+
+  function renderImages() {
+    imageList.replaceChildren();
+
+    if (images.length === 0) {
+      showMessage(listMessage, "No images have been added yet.");
+      return;
+    }
+
+    showMessage(listMessage, "");
+
+    images.forEach((item, index) => {
+      const card = document.createElement("div");
+      card.className = "image-card";
+
+      const preview = document.createElement("img");
+      preview.src = item.image_url;
+      preview.alt = item.name;
+      preview.loading = "lazy";
+
+      preview.onerror = () => {
+        preview.removeAttribute("src");
+        preview.alt = "Image could not be loaded";
+      };
+
+      const info = document.createElement("div");
+      info.className = "image-info";
+
+      const name = document.createElement("div");
+      name.className = "image-name";
+      name.textContent = item.position + ". " + item.name;
+
+      const url = document.createElement("div");
+      url.className = "image-url";
+      url.textContent = item.image_url;
+
+      const status = document.createElement("div");
+      status.className = "status" + (item.is_active ? "" : " inactive");
+      status.textContent = item.is_active ? "Active" : "Inactive";
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const up = document.createElement("button");
+      up.textContent = "↑";
+      up.title = "Move up";
+      up.disabled = index === 0;
+      up.addEventListener("click", () => moveImage(index, -1));
+
+      const down = document.createElement("button");
+      down.textContent = "↓";
+      down.title = "Move down";
+      down.disabled = index === images.length - 1;
+      down.addEventListener("click", () => moveImage(index, 1));
+
+      const toggle = document.createElement("button");
+      toggle.textContent = item.is_active ? "Deactivate" : "Activate";
+      toggle.addEventListener("click", () => toggleImage(item));
+
+      const remove = document.createElement("button");
+      remove.className = "danger";
+      remove.textContent = "Delete";
+      remove.addEventListener("click", () => deleteImage(item));
+
+      actions.append(up, down, toggle, remove);
+      info.append(name, url, status, actions);
+      card.append(preview, info);
+      imageList.append(card);
+    });
+  }
+
+  document.getElementById("add-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const name = document.getElementById("image-name").value.trim();
+    const imageUrl = document.getElementById("image-url").value.trim();
+
+    try {
+      const parsedUrl = new URL(imageUrl);
+
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        throw new Error("Use an HTTP or HTTPS image URL.");
+      }
+    } catch (error) {
+      showMessage(addMessage, error.message || "Enter a valid image URL.", true);
+      return;
+    }
+
+    const nextPosition = images.length
+      ? Math.max(...images.map(item => item.position)) + 1
+      : 1;
+
+    const { error } = await db
+      .from("prism_images")
+      .insert({
+        name,
+        image_url: imageUrl,
+        position: nextPosition,
+        is_active: true
+      });
+
+    if (error) {
+      showMessage(addMessage, error.message, true);
+      return;
+    }
+
+    document.getElementById("add-form").reset();
+    showMessage(addMessage, "Image added successfully.");
+    await loadImages();
+  });
+
+  async function moveImage(index, direction) {
+    const current = images[index];
+    const other = images[index + direction];
+
+    if (!current || !other) return;
+
+    const firstPosition = current.position;
+    const secondPosition = other.position;
+
+    const { error: firstError } = await db
+      .from("prism_images")
+      .update({ position: secondPosition })
+      .eq("id", current.id);
+
+    if (firstError) {
+      showMessage(listMessage, firstError.message, true);
+      return;
+    }
+
+    const { error: secondError } = await db
+      .from("prism_images")
+      .update({ position: firstPosition })
+      .eq("id", other.id);
+
+    if (secondError) {
+      showMessage(listMessage, secondError.message, true);
+    }
+
+    await loadImages();
+  }
+
+  async function toggleImage(item) {
+    const { error } = await db
+      .from("prism_images")
+      .update({ is_active: !item.is_active })
+      .eq("id", item.id);
+
+    if (error) {
+      showMessage(listMessage, error.message, true);
+      return;
+    }
+
+    await loadImages();
+  }
+
+  async function deleteImage(item) {
+    if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
+
+    const { error } = await db
+      .from("prism_images")
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      showMessage(listMessage, error.message, true);
+      return;
+    }
+
+    await loadImages();
+  }
+
+  db.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT" || !session) {
+      setLoggedOut();
+    }
+  });
+
+  checkSession();
+</script>
+</body>
+</html>
 
