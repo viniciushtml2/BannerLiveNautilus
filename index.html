@@ -277,15 +277,39 @@ async function refreshImages() {
 
     }
 
-    // Pré-carrega as imagens antes de disponibilizá-las
-    const loadedImages = await Promise.all(
-        (data || []).map(preloadImage)
-    );
+  // Pré-carrega as imagens antes de disponibilizá-las
+const loadedImages = (await Promise.all(
+    (data || []).map(preloadImage)
+)).filter(Boolean);
 
-    // Ignora respostas antigas de consultas simultâneas
-    if (requestId !== refreshRequest) return;
+// Ignora respostas antigas de consultas simultâneas
+if (requestId !== refreshRequest) return;
 
-    pendingImages = loadedImages.filter(Boolean);
+// Compare the new list with the currently displayed list
+const signature = list =>
+    JSON.stringify(list.map(image => ({
+        image_url: image.image_url,
+        name: image.name,
+        position: image.position,
+        fit_mode: image.fit_mode,
+        object_position: image.object_position
+    })));
+
+const currentSignature = signature(activeImages);
+const newSignature = signature(loadedImages);
+const pendingSignature = pendingImages === null
+    ? null
+    : signature(pendingImages);
+
+// Ignore identical lists
+if (
+    newSignature === currentSignature ||
+    newSignature === pendingSignature
+) {
+    return;
+}
+
+pendingImages = loadedImages;
 
     // Se o prisma estiver parado sem imagens,
     // podemos aplicar a nova lista imediatamente.
@@ -320,26 +344,20 @@ function applyPendingImages() {
 
     }
 
-    // Reset the initial orientation and sequence.
-    frontFace = 0;
-    rotation = 0;
-
-    prism.style.transition = "none";
-    prism.style.transform = "rotateY(0deg)";
-
+    // Keep the current prism orientation.
+    // Assign images starting from the currently visible face.
     for (let i = 0; i < 3; i++) {
-        setFaceImage(i, activeImages[i % activeImages.length]);
+
+        const faceIndex = (frontFace + i) % 3;
+
+        setFaceImage(
+            faceIndex,
+            activeImages[i % activeImages.length]
+        );
+
     }
 
     nextImage = 3 % activeImages.length;
-
-    // Re-enable transitions after applying the initial state.
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            prism.style.transition =
-                `transform ${ROTATION_DURATION}ms ease-in-out`;
-        });
-    });
 }
 
 function setFaceImage(faceIndex, image) {
