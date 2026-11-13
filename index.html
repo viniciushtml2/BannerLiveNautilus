@@ -29,8 +29,10 @@ body {
 
 .scene {
     width: 600px;
-    min-height: 350px;
+    height: 350px;
+
     perspective: 1400px;
+    perspective-origin: 50% 50%;
 
     display: flex;
     align-items: center;
@@ -41,10 +43,14 @@ body {
 
 .prism {
     position: relative;
+
     width: 500px;
+    height: 280px;
 
     transform-style: preserve-3d;
+    transform-origin: 50% 50% 0;
     transform: rotateY(0deg);
+
     transition: transform 2.5s ease-in-out;
 }
 /* Faces laterais */
@@ -241,8 +247,11 @@ async function refreshPrismSettings() {
         `rotateY(240deg) translateZ(${depth}px)`;
 
     // Adjust the preview area to the new height
-    scene.style.height = `${height + 70}px`;
+scene.style.height = `${Math.max(350, height + 70)}px`;
 
+prism.style.position = "relative";
+prism.style.margin = "0 auto";
+prism.style.transformOrigin = "50% 50% 0";
 }
 
 /* =================================
