@@ -156,7 +156,7 @@
 .preview-prism {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   align-items: center;
 }
@@ -324,7 +324,7 @@
 
   const previewScene = document.getElementById("preview-scene");
   const previewPrism = document.getElementById("preview-prism");
-  const previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
+let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
   const ratioInput = document.getElementById("prism-ratio");
   const RATIO_WIDTH = 500;
   const ASPECT_RATIOS = {
@@ -641,9 +641,22 @@
 function renderPreview() {
   const activeImages = images.filter(item => item.is_active);
 
-  previewFaceItems = [0, 1, 2].map(index =>
-    activeImages.length ? activeImages[index % activeImages.length] : null
-  );
+  previewFaceItems = activeImages;
+
+  previewPrism.replaceChildren();
+
+  activeImages.forEach((item, index) => {
+    const face = document.createElement("div");
+    face.className = "preview-face";
+
+    const img = document.createElement("img");
+    img.alt = item.name;
+
+    face.appendChild(img);
+    previewPrism.appendChild(face);
+  });
+
+  previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
 
   updatePreviewFaceImages();
   updatePreviewGeometry();
