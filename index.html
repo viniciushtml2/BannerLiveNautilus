@@ -307,7 +307,6 @@ function applyPendingImages() {
     if (pendingImages === null) return;
 
     activeImages = pendingImages;
-
     pendingImages = null;
 
     if (activeImages.length === 0) {
@@ -317,29 +316,30 @@ function applyPendingImages() {
         });
 
         nextImage = 0;
-
         return;
 
     }
 
-    /*
-       A face frontal atual recebe a primeira imagem.
-       As outras duas recebem as próximas imagens
-       na ordem em que passarão pela frente.
-    */
+    // Reset the initial orientation and sequence.
+    frontFace = 0;
+    rotation = 0;
 
-  for (let i = 0; i < 3; i++) {
+    prism.style.transition = "none";
+    prism.style.transform = "rotateY(0deg)";
 
-    const faceIndex = (frontFace + i) % 3;
+    for (let i = 0; i < 3; i++) {
+        setFaceImage(i, activeImages[i % activeImages.length]);
+    }
 
-    const imageIndex = i % activeImages.length;
-
-    setFaceImage(faceIndex, activeImages[imageIndex]);
-
-}
-    // Próxima imagem após as três faces iniciais
     nextImage = 3 % activeImages.length;
 
+    // Re-enable transitions after applying the initial state.
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            prism.style.transition =
+                `transform ${ROTATION_DURATION}ms ease-in-out`;
+        });
+    });
 }
 
 function setFaceImage(faceIndex, image) {
@@ -375,8 +375,8 @@ function scheduleRotation() {
 
 async function initialize() {
 
-    prism.style.transitionDuration =
-        `${ROTATION_DURATION / 1000}s`;
+prism.style.transition =
+    `transform ${ROTATION_DURATION}ms ease-in-out`;
 // Fetch images and settings before starting
 await Promise.all([
     refreshImages(),
