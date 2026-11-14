@@ -326,6 +326,7 @@ pendingImages = loadedImages;
    APLICAR NOVA LISTA DE IMAGENS
 ================================= */
 
+
 function applyPendingImages() {
 
     if (pendingImages === null) return;
@@ -360,20 +361,19 @@ function applyPendingImages() {
     nextImage = 3 % activeImages.length;
 }
 
-    // Keep the current prism orientation.
-    // Assign images starting from the currently visible face.
-    for (let i = 0; i < 3; i++) {
+function setFaceImage(faceIndex, image) {
 
-        const faceIndex = (frontFace + i) % 3;
+    const face = faces[faceIndex];
 
-        setFaceImage(
-            faceIndex,
-            activeImages[i % activeImages.length]
-        );
+    face.src = image.image_url;
+    face.alt = image.name;
 
-    }
+    face.style.objectFit =
+        image.fit_mode === "fill" ? "fill" : "cover";
 
-    nextImage = 3 % activeImages.length;
+    face.style.objectPosition =
+        image.object_position || "center";
+
 }
 
 function setFaceImage(faceIndex, image) {
