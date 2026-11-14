@@ -277,7 +277,7 @@ async function refreshImages() {
 
     }
 
-  // Pré-carrega as imagens antes de disponibilizá-las
+// Pré-carrega as imagens antes de disponibilizá-las
 const loadedImages = (await Promise.all(
     (data || []).map(preloadImage)
 )).filter(Boolean);
@@ -310,7 +310,7 @@ if (
 }
 
 pendingImages = loadedImages;
-
+ 
     // Se o prisma estiver parado sem imagens,
     // podemos aplicar a nova lista imediatamente.
     if (initialized && !isRotating && activeImages.length === 0) {
@@ -343,6 +343,22 @@ function applyPendingImages() {
         return;
 
     }
+
+    // Keep the current prism orientation.
+    // Assign images starting from the currently visible face.
+    for (let i = 0; i < 3; i++) {
+
+        const faceIndex = (frontFace + i) % 3;
+
+        setFaceImage(
+            faceIndex,
+            activeImages[i % activeImages.length]
+        );
+
+    }
+
+    nextImage = 3 % activeImages.length;
+}
 
     // Keep the current prism orientation.
     // Assign images starting from the currently visible face.
