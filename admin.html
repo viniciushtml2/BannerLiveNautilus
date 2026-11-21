@@ -86,6 +86,7 @@
 
     .image-card {
       display: grid;
+      cursor: grab;
       grid-template-columns: 120px minmax(0, 1fr);
       gap: 16px;
       padding: 14px;
@@ -93,6 +94,9 @@
       border: 1px solid var(--border);
       border-radius: 6px;
     }
+    .image-card:active { cursor: grabbing; }
+    .image-card.dragging { opacity: .4; }
+    .image-card.drag-over { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .image-card > img {
       width: 120px;
@@ -555,6 +559,36 @@ let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
     images.forEach((item, index) => {
       const card = document.createElement("div");
       card.className = "image-card";
+      card.draggable = true;
+      card.dataset.imageId = String(item.id);
+      card.addEventListener("dragstart", event => {
+        draggedImageId = item.id;
+        card.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(item.id));
+      });
+      card.addEventListener("dragover", event => {
+        event.preventDefault();
+        if (draggedImageId == null) return;
+        const dragged = images.find(entry => String(entry.id) === String(draggedImageId));
+        if (dragged && dragged.is_active === item.is_active) {
+          event.dataTransfer.dropEffect = "move";
+          card.classList.add("drag-over");
+        }
+      });
+      card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
+      card.addEventListener("drop", event => {
+        event.preventDefault();
+        card.classList.remove("drag-over");
+        const sourceId = draggedImageId ?? event.dataTransfer.getData("text/plain");
+        reorderImages(sourceId, item.id);
+      });
+      card.addEventListener("dragend", () => {
+        draggedImageId = null;
+        imageList.querySelectorAll(".image-card").forEach(element =>
+          element.classList.remove("dragging", "drag-over")
+        );
+      });
 
       const preview = document.createElement("img");
       preview.src = item.image_url;
@@ -674,48 +708,16 @@ let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
     showMessage(listMessage, "Image settings saved.");
   }
 function renderPreview() {
-   // Include inactive images too, so every item can be rearranged here.
-   previewFaceItems = [...images];
+   // The display preview only shows active images.
+   previewFaceItems = images.filter(item => item.is_active);
    previewPrism.replaceChildren();
 
    previewFaceItems.forEach(item => {
      const face = document.createElement("div");
      face.className = "preview-face" + (item.is_active ? "" : " inactive-preview");
-     face.draggable = true;
-     face.dataset.imageId = String(item.id);
-     face.title = "Drag to reorder: " + item.name;
-
      const img = document.createElement("img");
      img.alt = item.name;
-
-     const state = document.createElement("span");
-     state.className = "preview-status";
-     state.textContent = item.is_active ? "ACTIVE" : "DEACTIVATED";
-     face.append(img, state);
-
-     face.addEventListener("dragstart", event => {
-       draggedImageId = item.id;
-       face.classList.add("dragging");
-       event.dataTransfer.effectAllowed = "move";
-       event.dataTransfer.setData("text/plain", String(item.id));
-     });
-     face.addEventListener("dragover", event => {
-       event.preventDefault();
-       event.dataTransfer.dropEffect = "move";
-       face.classList.add("drag-over");
-     });
-     face.addEventListener("dragleave", () => face.classList.remove("drag-over"));
-     face.addEventListener("drop", event => {
-       event.preventDefault();
-       face.classList.remove("drag-over");
-       const sourceId = draggedImageId ?? event.dataTransfer.getData("text/plain");
-       reorderImages(sourceId, item.id);
-     });
-     face.addEventListener("dragend", () => {
-       draggedImageId = null;
-       previewFaces.forEach(element => element.classList.remove("drag-over", "dragging"));
-     });
-
+     face.appendChild(img);
      previewPrism.appendChild(face);
    });
 
@@ -729,6 +731,7 @@ function renderPreview() {
    const fromIndex = images.findIndex(item => String(item.id) === String(sourceId));
    const toIndex = images.findIndex(item => String(item.id) === String(targetId));
    if (fromIndex < 0 || toIndex < 0) return;
+   if (images[fromIndex].is_active !== images[toIndex].is_active) return;
 
    const [moved] = images.splice(fromIndex, 1);
    images.splice(toIndex, 0, moved);
@@ -823,9 +826,22 @@ function updatePreviewGeometry() {
     await loadImages();
   });
 
+  function sortImagesByStatus() {
+    // Active images always stay before deactivated images.
+    // The existing order inside each group is preserved.
+    images = [
+      ...images.filter(item => item.is_active),
+      ...images.filter(item => !item.is_active)
+    ];
+  }
+
   function moveImage(index, direction) {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= images.length) return;
+
+    // Do not allow an image to cross the active/deactivated boundary.
+    if (images[index].is_active !== images[targetIndex].is_active) return;
+
     const [moved] = images.splice(index, 1);
     images.splice(targetIndex, 0, moved);
     renderImages();
@@ -835,6 +851,7 @@ function updatePreviewGeometry() {
 
   function toggleImage(item) {
     item.is_active = !item.is_active;
+    sortImagesByStatus();
     renderImages();
     renderPreview();
     updateSaveState();
@@ -859,6 +876,9 @@ function updatePreviewGeometry() {
 
   async function saveImageChanges() {
     if (!hasPendingChanges()) return;
+    sortImagesByStatus();
+    renderImages();
+    renderPreview();
     saveChangesButton.disabled = true;
     showMessage(listMessage, "Saving image order and statuses...");
 
