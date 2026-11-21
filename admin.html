@@ -456,6 +456,9 @@ let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
     }
 
     images = (data || []).map(item => ({ ...item, _saved_is_active: item.is_active }));
+    // Keep the admin list grouped: active images first, deactivated images last.
+    // Preserve the existing order within each group.
+    sortImagesByStatus();
     originalOrder = images.map(item => item.id);
     renderImages();
     renderPreview();
@@ -714,7 +717,39 @@ function renderPreview() {
 
    previewFaceItems.forEach(item => {
      const face = document.createElement("div");
-     face.className = "preview-face" + (item.is_active ? "" : " inactive-preview");
+     face.className = "preview-face";
+     face.draggable = true;
+     face.dataset.imageId = String(item.id);
+
+     face.addEventListener("dragstart", event => {
+       draggedImageId = item.id;
+       face.classList.add("dragging");
+       event.dataTransfer.effectAllowed = "move";
+       event.dataTransfer.setData("text/plain", String(item.id));
+     });
+     face.addEventListener("dragover", event => {
+       event.preventDefault();
+       if (draggedImageId == null) return;
+       const dragged = images.find(entry => String(entry.id) === String(draggedImageId));
+       if (dragged && dragged.is_active && item.is_active) {
+         event.dataTransfer.dropEffect = "move";
+         face.classList.add("drag-over");
+       }
+     });
+     face.addEventListener("dragleave", () => face.classList.remove("drag-over"));
+     face.addEventListener("drop", event => {
+       event.preventDefault();
+       face.classList.remove("drag-over");
+       const sourceId = draggedImageId ?? event.dataTransfer.getData("text/plain");
+       reorderImages(sourceId, item.id);
+     });
+     face.addEventListener("dragend", () => {
+       draggedImageId = null;
+       previewPrism.querySelectorAll(".preview-face").forEach(element =>
+         element.classList.remove("dragging", "drag-over")
+       );
+     });
+
      const img = document.createElement("img");
      img.alt = item.name;
      face.appendChild(img);
@@ -725,7 +760,6 @@ function renderPreview() {
    updatePreviewFaceImages();
    updatePreviewGeometry();
  }
-
  function reorderImages(sourceId, targetId) {
    if (sourceId == null || String(sourceId) === String(targetId)) return;
    const fromIndex = images.findIndex(item => String(item.id) === String(sourceId));
