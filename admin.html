@@ -105,8 +105,32 @@
     .image-info { min-width: 0; }
     .image-name { font-size: 17px; margin-bottom: 5px; }
     .image-url { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
-    .status { display: inline-block; margin-top: 8px; color: var(--accent); font-size: 12px; }
-    .status.inactive { color: var(--muted); }
+    .status {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+      padding: 5px 9px; border-radius: 999px; font-size: 12px;
+      font-weight: bold; letter-spacing: .3px;
+    }
+    .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status.active { color: #b9e2b1; background: rgba(91,155,79,.18); border: 1px solid rgba(125,190,111,.45); }
+    .status.inactive { color: #f0a49d; background: rgba(189,98,91,.18); border: 1px solid rgba(189,98,91,.5); }
+    .preview-face { cursor: grab; }
+    .preview-face:active { cursor: grabbing; }
+    .preview-face.dragging { opacity: .35; outline: 2px dashed var(--accent); }
+    .preview-face.drag-over { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .preview-face.inactive-preview { opacity: .42; filter: grayscale(1); }
+    .preview-face .preview-status {
+      position: absolute; left: 5px; bottom: 5px; z-index: 2;
+      padding: 3px 6px; border-radius: 3px; color: #fff;
+      background: rgba(20,20,16,.88); font: 11px Arial, sans-serif; pointer-events: none;
+    }
+    .save-bar {
+      position: sticky; top: 10px; z-index: 20; display: flex;
+      align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 14px; margin-bottom: 16px; background: #302b1e;
+      border: 1px solid var(--accent); border-radius: 6px;
+    }
+    .save-bar-text { color: var(--muted); font-size: 13px; }
+    .save-bar-text.unsaved { color: #f0c879; }
 
     .message {
       margin-top: 14px;
@@ -235,11 +259,16 @@ grid-template-columns: repeat(3, minmax(0, 1fr));
       <button id="logout-button">Sign out</button>
     </div>
 
+    <div class="save-bar">
+      <div id="save-state" class="save-bar-text">All changes saved.</div>
+      <button id="save-changes" class="primary" type="button">Save changes</button>
+    </div>
+
     <section class="panel">
   <h2>Image preview</h2>
   <div class="preview-help">
-    Front view of all three images. Each image is displayed independently
-    using the selected aspect ratio.
+    Drag images left or right to change their order. Inactive images are dimmed.
+    Changes are not published until you click Save changes above.
   </div>
 
   <div id="preview-scene" class="preview-scene">
@@ -258,7 +287,7 @@ grid-template-columns: repeat(3, minmax(0, 1fr));
 
   <div class="preview-note">
     <span id="preview-dimensions">500 × 237 px</span>
-    <span>All three images use identical dimensions.</span>
+    <span>Drag to reorder · Dimmed images are deactivated.</span>
   </div>
 </section>
 
@@ -300,7 +329,7 @@ grid-template-columns: repeat(3, minmax(0, 1fr));
 
     <section class="panel">
       <h2>Image collection</h2>
-      <div class="subtitle">Images are displayed in ascending position order.</div>
+      <div class="subtitle">Use the preview above or the arrows below to arrange images. Status changes remain pending until Save changes is clicked.</div>
       <div id="image-list" class="image-list"></div>
       <div id="list-message" class="message"></div>
     </section>
@@ -321,6 +350,10 @@ grid-template-columns: repeat(3, minmax(0, 1fr));
   const listMessage = document.getElementById("list-message");
   const settingsMessage = document.getElementById("settings-message");
   const imageList = document.getElementById("image-list");
+  const saveChangesButton = document.getElementById("save-changes");
+  const saveState = document.getElementById("save-state");
+  let draggedImageId = null;
+  let originalOrder = [];
 
   const previewScene = document.getElementById("preview-scene");
   const previewPrism = document.getElementById("preview-prism");
@@ -418,9 +451,11 @@ let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
       return;
     }
 
-    images = data || [];
+    images = (data || []).map(item => ({ ...item, _saved_is_active: item.is_active }));
+    originalOrder = images.map(item => item.id);
     renderImages();
     renderPreview();
+    updateSaveState();
   }
 
   async function loadPrismSettings() {
@@ -545,8 +580,8 @@ let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
       url.textContent = item.image_url;
 
       const status = document.createElement("div");
-      status.className = "status" + (item.is_active ? "" : " inactive");
-      status.textContent = item.is_active ? "Active" : "Inactive";
+      status.className = "status " + (item.is_active ? "active" : "inactive");
+      status.textContent = item.is_active ? "ACTIVE" : "DEACTIVATED";
 
       const options = document.createElement("div");
       options.className = "image-options";
@@ -639,30 +674,70 @@ let previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
     showMessage(listMessage, "Image settings saved.");
   }
 function renderPreview() {
-  const activeImages = images.filter(item => item.is_active);
+   // Include inactive images too, so every item can be rearranged here.
+   previewFaceItems = [...images];
+   previewPrism.replaceChildren();
 
-  previewFaceItems = activeImages;
+   previewFaceItems.forEach(item => {
+     const face = document.createElement("div");
+     face.className = "preview-face" + (item.is_active ? "" : " inactive-preview");
+     face.draggable = true;
+     face.dataset.imageId = String(item.id);
+     face.title = "Drag to reorder: " + item.name;
 
-  previewPrism.replaceChildren();
+     const img = document.createElement("img");
+     img.alt = item.name;
 
-  activeImages.forEach((item, index) => {
-    const face = document.createElement("div");
-    face.className = "preview-face";
+     const state = document.createElement("span");
+     state.className = "preview-status";
+     state.textContent = item.is_active ? "ACTIVE" : "DEACTIVATED";
+     face.append(img, state);
 
-    const img = document.createElement("img");
-    img.alt = item.name;
+     face.addEventListener("dragstart", event => {
+       draggedImageId = item.id;
+       face.classList.add("dragging");
+       event.dataTransfer.effectAllowed = "move";
+       event.dataTransfer.setData("text/plain", String(item.id));
+     });
+     face.addEventListener("dragover", event => {
+       event.preventDefault();
+       event.dataTransfer.dropEffect = "move";
+       face.classList.add("drag-over");
+     });
+     face.addEventListener("dragleave", () => face.classList.remove("drag-over"));
+     face.addEventListener("drop", event => {
+       event.preventDefault();
+       face.classList.remove("drag-over");
+       const sourceId = draggedImageId ?? event.dataTransfer.getData("text/plain");
+       reorderImages(sourceId, item.id);
+     });
+     face.addEventListener("dragend", () => {
+       draggedImageId = null;
+       previewFaces.forEach(element => element.classList.remove("drag-over", "dragging"));
+     });
 
-    face.appendChild(img);
-    previewPrism.appendChild(face);
-  });
+     previewPrism.appendChild(face);
+   });
 
-  previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
+   previewFaces = [...previewPrism.querySelectorAll(".preview-face")];
+   updatePreviewFaceImages();
+   updatePreviewGeometry();
+ }
 
-  updatePreviewFaceImages();
-  updatePreviewGeometry();
-}
+ function reorderImages(sourceId, targetId) {
+   if (sourceId == null || String(sourceId) === String(targetId)) return;
+   const fromIndex = images.findIndex(item => String(item.id) === String(sourceId));
+   const toIndex = images.findIndex(item => String(item.id) === String(targetId));
+   if (fromIndex < 0 || toIndex < 0) return;
 
-  function updatePreviewFaceImages() {
+   const [moved] = images.splice(fromIndex, 1);
+   images.splice(toIndex, 0, moved);
+   renderImages();
+   renderPreview();
+   updateSaveState();
+ }
+
+ function updatePreviewFaceImages() {
     previewFaces.forEach((face, index) => {
       const img = face.querySelector("img");
       const item = previewFaceItems[index];
@@ -748,49 +823,80 @@ function updatePreviewGeometry() {
     await loadImages();
   });
 
-  async function moveImage(index, direction) {
-    const current = images[index];
-    const other = images[index + direction];
-    if (!current || !other) return;
-
-    const firstPosition = current.position;
-    const secondPosition = other.position;
-
-    const { error: firstError } = await db
-      .from("prism_images")
-      .update({ position: secondPosition })
-      .eq("id", current.id);
-
-    if (firstError) {
-      showMessage(listMessage, firstError.message, true);
-      return;
-    }
-
-    const { error: secondError } = await db
-      .from("prism_images")
-      .update({ position: firstPosition })
-      .eq("id", other.id);
-
-    if (secondError) {
-      showMessage(listMessage, secondError.message, true);
-      return;
-    }
-
-    await loadImages();
+  function moveImage(index, direction) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= images.length) return;
+    const [moved] = images.splice(index, 1);
+    images.splice(targetIndex, 0, moved);
+    renderImages();
+    renderPreview();
+    updateSaveState();
   }
 
-  async function toggleImage(item) {
-    const { error } = await db
-      .from("prism_images")
-      .update({ is_active: !item.is_active })
-      .eq("id", item.id);
+  function toggleImage(item) {
+    item.is_active = !item.is_active;
+    renderImages();
+    renderPreview();
+    updateSaveState();
+  }
 
-    if (error) {
-      showMessage(listMessage, error.message, true);
-      return;
+  function hasPendingChanges() {
+    const orderChanged = images.some((item, index) => item.id !== originalOrder[index]);
+    const statusChanged = images.some(item => item.is_active !== item._saved_is_active);
+    return orderChanged || statusChanged;
+  }
+
+  function updateSaveState() {
+    const pending = hasPendingChanges();
+    saveState.textContent = pending
+      ? "Unsaved changes — click Save changes to publish."
+      : "All changes saved.";
+    saveState.classList.toggle("unsaved", pending);
+    saveChangesButton.disabled = !pending;
+  }
+
+  saveChangesButton.addEventListener("click", saveImageChanges);
+
+  async function saveImageChanges() {
+    if (!hasPendingChanges()) return;
+    saveChangesButton.disabled = true;
+    showMessage(listMessage, "Saving image order and statuses...");
+
+    try {
+      // Temporary positions prevent collisions when position has a unique constraint.
+      const highestPosition = Math.max(0, ...images.map(item => Number(item.position) || 0));
+      const temporaryOffset = highestPosition + images.length + 1000;
+
+      for (let index = 0; index < images.length; index++) {
+        const item = images[index];
+        const { error } = await db.from("prism_images")
+          .update({ position: temporaryOffset + index, is_active: item.is_active })
+          .eq("id", item.id);
+        if (error) throw error;
+      }
+
+      for (let index = 0; index < images.length; index++) {
+        const item = images[index];
+        const newPosition = index + 1;
+        const { error } = await db.from("prism_images")
+          .update({ position: newPosition })
+          .eq("id", item.id);
+        if (error) throw error;
+        item.position = newPosition;
+        item._saved_is_active = item.is_active;
+      }
+
+      originalOrder = images.map(item => item.id);
+      renderImages();
+      renderPreview();
+      updateSaveState();
+      showMessage(listMessage, "Image order and statuses saved.");
+    } catch (error) {
+      showMessage(listMessage, error.message || "Could not save changes.", true);
+      await loadImages();
+    } finally {
+      updateSaveState();
     }
-
-    await loadImages();
   }
 
   async function deleteImage(item) {
