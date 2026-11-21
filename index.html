@@ -1,3 +1,550 @@
+ 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prism Banner</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #111;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+}
+
+/* Área de visualização */
+
+.scene {
+    width: 600px;
+    height: 350px;
+
+    perspective: 1400px;
+    perspective-origin: 50% 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Objeto 3D */
+
+.prism {
+    position: relative;
+
+    width: 500px;
+    height: 280px;
+
+    transform-style: preserve-3d;
+    transform-origin: 50% 50% 0;
+    transform: rotateY(0deg);
+
+    transition: transform 2.5s ease-in-out;
+}
+/* Faces laterais */
+
+.face {
+    position: absolute;
+
+    width: 500px;
+height: 100%;
+
+    top: 0;
+    left: 0;
+
+    overflow: hidden;
+    backface-visibility: hidden;
+
+    background: #222;
+}
+
+.face img {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+}
+
+/* Geometria do prisma triangular */
+
+.face-a {
+    transform: rotateY(0deg) translateZ(144.34px);
+}
+
+.face-b {
+    transform: rotateY(120deg) translateZ(144.34px);
+}
+
+.face-c {
+    transform: rotateY(240deg) translateZ(144.34px);
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="scene">
+
+    <div class="prism" id="prism">
+
+        <div class="face face-a">
+            <img id="imageA" alt="">
+        </div>
+
+        <div class="face face-b">
+            <img id="imageB" alt="">
+        </div>
+
+        <div class="face face-c">
+            <img id="imageC" alt="">
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+/* =================================
+   SUPABASE CONFIGURATION
+================================= */
+
+const SUPABASE_URL = "https://ylpymxsywyrygzvpqpon.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_FPiPPF6vOQdevY-mrh1GbA_1TSX86HN";
+
+const db = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
+
+/* =================================
+   CONFIGURAÇÕES
+================================= */
+
+const ROTATION_DURATION = 8000;
+const PAUSE_DURATION = 4000;
+
+
+/* =================================
+   REFERÊNCIAS
+================================= */
+
+const prism = document.getElementById("prism");
+const scene = document.querySelector(".scene");
+
+const faceElements = [
+    document.querySelector(".face-a"),
+    document.querySelector(".face-b"),
+    document.querySelector(".face-c")
+];
+
+const faces = [
+    document.getElementById("imageA"),
+    document.getElementById("imageB"),
+    document.getElementById("imageC")
+];
+
+/* =================================
+   ESTADO
+================================= */
+
+// Face atualmente posicionada de frente
+let frontFace = 0;
+
+// Próxima imagem da sequência
+let nextImage = 3;
+
+// Ângulo atual do prisma
+let rotation = 0;
+
+// Controle da rotação
+let isRotating = false;
+
+// Imagens atualmente utilizadas
+let activeImages = [];
+
+// Nova lista aguardando o momento seguro de aplicação
+let pendingImages = null;
+
+// Controle da inicialização
+let initialized = false;
+
+// Controle de consultas simultâneas
+let refreshRequest = 0;
+
+
+/* =================================
+   PRÉ-CARREGAMENTO
+================================= */
+
+function preloadImage(image) {
+
+    return new Promise(resolve => {
+
+        const img = new Image();
+
+        img.onload = () => resolve(image);
+        img.onerror = () => resolve(null);
+
+        img.src = image.image_url;
+
+    });
+
+}
+async function refreshPrismSettings() {
+
+    const { data, error } = await db
+        .from("prism_settings")
+        .select("width_px, height_px")
+        .eq("id", 1)
+        .single();
+
+    if (error) {
+        console.error("Erro ao buscar configurações:", error);
+        return;
+    }
+
+    const width = data.width_px;
+    const height = data.height_px;
+
+    const depth = width / (2 * Math.sqrt(3));
+
+    // Update prism dimensions
+    prism.style.width = `${width}px`;
+    prism.style.height = `${height}px`;
+
+    // Update all three faces
+    faceElements.forEach(face => {
+        face.style.width = `${width}px`;
+        face.style.height = `${height}px`;
+    });
+
+    // Update the triangular prism geometry
+    faceElements[0].style.transform =
+        `rotateY(0deg) translateZ(${depth}px)`;
+
+    faceElements[1].style.transform =
+        `rotateY(120deg) translateZ(${depth}px)`;
+
+    faceElements[2].style.transform =
+        `rotateY(240deg) translateZ(${depth}px)`;
+
+    // Adjust the preview area to the new height
+scene.style.height = `${Math.max(350, height + 70)}px`;
+
+prism.style.position = "relative";
+prism.style.margin = "0 auto";
+prism.style.transformOrigin = "50% 50% 0";
+}
+
+/* =================================
+   BUSCAR IMAGENS NO SUPABASE
+================================= */
+
+async function refreshImages() {
+
+    const requestId = ++refreshRequest;
+
+    const { data, error } = await db
+        .from("prism_images")
+.select("image_url, name, position, created_at, fit_mode, object_position")
+        .eq("is_active", true)
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true });
+
+    if (error) {
+
+        console.error("Erro ao buscar imagens:", error);
+
+        return;
+
+    }
+
+// Pré-carrega as imagens antes de disponibilizá-las
+const loadedImages = (await Promise.all(
+    (data || []).map(preloadImage)
+)).filter(Boolean);
+
+// Ignora respostas antigas de consultas simultâneas
+if (requestId !== refreshRequest) return;
+
+// Compare the new list with the currently displayed list
+const signature = list =>
+    JSON.stringify(list.map(image => ({
+        image_url: image.image_url,
+        name: image.name,
+        position: image.position,
+        fit_mode: image.fit_mode,
+        object_position: image.object_position
+    })));
+
+const currentSignature = signature(activeImages);
+const newSignature = signature(loadedImages);
+const pendingSignature = pendingImages === null
+    ? null
+    : signature(pendingImages);
+
+// Ignore identical lists
+if (
+    newSignature === currentSignature ||
+    newSignature === pendingSignature
+) {
+    return;
+}
+
+pendingImages = loadedImages;
+ 
+    // Se o prisma estiver parado sem imagens,
+    // podemos aplicar a nova lista imediatamente.
+    if (initialized && !isRotating && activeImages.length === 0) {
+
+        applyPendingImages();
+
+    }
+
+}
+
+
+/* =================================
+   APLICAR NOVA LISTA DE IMAGENS
+================================= */
+
+
+function applyPendingImages() {
+
+    if (pendingImages === null) return;
+
+    activeImages = pendingImages;
+    pendingImages = null;
+
+    if (activeImages.length === 0) {
+
+        faces.forEach(face => {
+            face.removeAttribute("src");
+        });
+
+        nextImage = 0;
+        return;
+
+    }
+
+    // Keep the current prism orientation.
+    // Assign images starting from the currently visible face.
+    for (let i = 0; i < 3; i++) {
+
+        const faceIndex = (frontFace + i) % 3;
+
+        setFaceImage(
+            faceIndex,
+            activeImages[i % activeImages.length]
+        );
+
+    }
+
+    nextImage = 3 % activeImages.length;
+}
+
+function setFaceImage(faceIndex, image) {
+
+    const face = faces[faceIndex];
+
+    face.src = image.image_url;
+    face.alt = image.name;
+
+    face.style.objectFit =
+        image.fit_mode === "fill" ? "fill" : "cover";
+
+    face.style.objectPosition =
+        image.object_position || "center";
+
+}
+
+function setFaceImage(faceIndex, image) {
+
+    const face = faces[faceIndex];
+
+    face.src = image.image_url;
+    face.alt = image.name;
+
+    face.style.objectFit =
+        image.fit_mode === "fill" ? "fill" : "cover";
+
+    face.style.objectPosition =
+        image.object_position || "center";
+
+}
+/* =================================
+   AGENDAMENTO DA ROTAÇÃO
+================================= */
+
+function scheduleRotation() {
+
+    if (activeImages.length === 0) return;
+
+    setTimeout(rotatePrism, PAUSE_DURATION);
+
+}
+
+
+/* =================================
+   INICIALIZAÇÃO
+================================= */
+
+async function initialize() {
+
+prism.style.transition =
+    `transform ${ROTATION_DURATION}ms ease-in-out`;
+// Fetch images and settings before starting
+await Promise.all([
+    refreshImages(),
+    refreshPrismSettings()
+]);
+
+applyPendingImages();
+
+    initialized = true;
+
+    if (activeImages.length > 0) {
+
+        scheduleRotation();
+
+    }
+
+    // Escuta alterações na tabela do Supabase
+    db
+        .channel("prism-images-channel")
+.on(
+    "postgres_changes",
+    {
+        event: "*",
+        schema: "public",
+        table: "prism_images"
+    },
+    () => {
+        refreshImages();
+    }
+)
+.on(
+    "postgres_changes",
+    {
+        event: "*",
+        schema: "public",
+        table: "prism_settings"
+    },
+    () => {
+        refreshPrismSettings();
+    }
+)
+        .subscribe(status => {
+
+            if (status === "SUBSCRIBED") {
+
+                // Atualiza novamente para evitar perder
+                // alterações durante a conexão inicial.
+                refreshImages();
+
+            }
+
+            if (status === "CHANNEL_ERROR") {
+
+                console.error("Erro na conexão Realtime.");
+
+            }
+
+        });
+
+}
+
+
+/* =================================
+   ROTAÇÃO
+================================= */
+
+function rotatePrism() {
+
+    if (isRotating || activeImages.length === 0) return;
+
+    isRotating = true;
+
+    // Rotaciona exatamente 120 graus
+    rotation -= 120;
+
+    prism.style.transform = `rotateY(${rotation}deg)`;
+
+}
+
+
+/* =================================
+   FINALIZAÇÃO DA ROTAÇÃO
+================================= */
+
+prism.addEventListener("transitionend", event => {
+
+    if (event.target !== prism) return;
+
+    if (event.propertyName !== "transform") return;
+
+    // A face anterior agora está escondida
+    const hiddenFace = frontFace;
+
+    // A próxima face passa a ficar de frente
+    frontFace = (frontFace + 1) % 3;
+
+    isRotating = false;
+
+    /*
+       Se houver uma nova lista de imagens,
+       ela será aplicada neste momento, quando
+       a rotação terminou.
+    */
+
+    if (pendingImages !== null) {
+
+        applyPendingImages();
+
+    } else if (activeImages.length > 0) {
+
+        // Substitui somente a face escondida
+     setFaceImage(hiddenFace, activeImages[nextImage]);
+        // Avança na sequência
+        nextImage =
+            (nextImage + 1) % activeImages.length;
+
+    }
+
+    // Aguarda antes da próxima rotação
+    scheduleRotation();
+
+});
+
+
+/* =================================
+   INICIAR
+================================= */
+
+initialize();
+
+</script>
+
+</body>
+</html>
 <!DOCTYPE html>
 <html lang="en">
 <head>
